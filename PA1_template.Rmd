@@ -8,7 +8,13 @@ output:
 
 ## Loading and preprocessing the data
 
-test
+```{r}
+
+actdata <- read.csv("activity.csv", colClasses = c("numeric", "character", "integer"))
+actdata$date <- as.Date(actdata$date, "%Y-%m-%d")
+head(actdata)
+
+```
 
 
 
