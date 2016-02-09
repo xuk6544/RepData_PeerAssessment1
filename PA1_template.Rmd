@@ -1,8 +1,9 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducible Research: Peer Assessment 1'
+output:
   html_document:
-    keep_md: true
+    keep_md: yes
+  pdf_document: default
 ---
 
 
@@ -20,14 +21,113 @@ head(actdata)
 
 ## What is mean total number of steps taken per day?
 
+Histogram of total steps in each day:
+
+```{r}
+stepsbyday <- aggregate (x=actdata$steps, by=list(actdata$date), FUN=sum, na.rm=TRUE)
+colnames(stepsbyday) = c("date", "totalsteps")
+hist(stepsbyday$totalsteps, main = "Distribution of total steps by day", xlab = "total steps per day", breaks=10)
+```
+
+Mean and median of total steps per day:
+
+```{r}
+mean(stepsbyday$totalsteps)
+```
+
+```{r}
+median(stepsbyday$totalsteps)
+```
 
 
 ## What is the average daily activity pattern?
 
+Time series plot:
 
+```{r}
+stepsbytime <- aggregate (x=actdata$steps, by=list(actdata$interval), FUN=mean, na.rm=TRUE)
+colnames(stepsbytime) = c("time", "avgsteps")
+plot(stepsbytime, type="l")
+```
+
+Time interval with highest average steps:
+
+```{r}
+stepsbytime [ which.max(stepsbytime$avgsteps), ]
+```
 
 ## Imputing missing values
 
+Total number of rows with NA:
+
+```{r}
+nrow (actdata[is.na(actdata), ])
+```
+
+Days and number of NA entries in these days:
+
+```{r}
+nadata = actdata[is.na(actdata),]
+aggregate (x=nadata$interval, by=list(nadata$date), FUN=NROW)
+```
+There are 12*24=288 intervals per day. This means all entries in these days are NA
+
+
+Imput missing value, using average steps of the same time interval:
+```{r}
+
+# save average steps at each time interval in a array using interval values as indexes
+# plus 1 so that the first element is indexed as 1 instead of zero
+avgstep_index <- 0
+for (i in 1:nrow(stepsbytime)) {
+  avgstep_index[ as.integer(1+stepsbytime$time[i]) ] <- stepsbytime$avgsteps[i]
+}
+
+#new data frame for storing data with imputed values
+new_actdata = actdata
+
+for (i in 1:nrow(new_actdata)) {
+  if (is.na(new_actdata$steps[i])) {
+    new_actdata$steps[i] = as.integer ( avgstep_index[ as.integer(new_actdata$interval[i]+1) ] )
+  }
+}
+
+head(new_actdata)
+
+```
+
+ploting new histogram:
+
+```{r}
+new_stepsbyday <- aggregate (x=new_actdata$steps, by=list(new_actdata$date), FUN=sum)
+colnames(new_stepsbyday) = c("date", "totalsteps")
+hist(new_stepsbyday$totalsteps, main = "Distribution of total steps by day (with imputed values)", xlab = "total steps per day", breaks=10)
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+library(lattice)
+
+day <- weekdays(new_actdata$date)
+daylevel <- vector()
+for (i in 1:nrow(new_actdata)) {
+if (day[i] == "Saturday") {
+daylevel[i] <- "Weekend"
+} else if (day[i] == "Sunday") {
+daylevel[i] <- "Weekend"
+} else {
+daylevel[i] <- "Weekday"
+}
+}
+new_actdata$daylevel <- daylevel
+new_actdata$daylevel <- factor(new_actdata$daylevel)
+new_stepsbytime <- aggregate(steps ~ interval + daylevel, data = new_actdata, mean)
+colnames(new_stepsbytime) <- c("interval", "daylevel", "steps")
+
+xyplot(steps ~ interval | daylevel, new_stepsbytime, type = "l", layout
+= c(1, 2), xlab = "Interval", ylab = "Number of steps")
+
+```
+
